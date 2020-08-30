@@ -27,6 +27,7 @@ let CoffeesService = class CoffeesService {
     }
     create(createCoffeeDto) {
         this.coffees.push(createCoffeeDto);
+        return createCoffeeDto;
     }
     update(id, updateCoffeeDto) {
         const existingCoffee = this.findOne(id);
