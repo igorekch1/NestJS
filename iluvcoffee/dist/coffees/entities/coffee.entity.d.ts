@@ -1,7 +1,7 @@
 import { Flavor } from './flavor.entity';
 export declare class Coffee {
     id: number;
-    name: string;
+    title: string;
     brand: string;
     recomendations: number;
     flavors: Flavor[];

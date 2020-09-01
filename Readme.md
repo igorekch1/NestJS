@@ -1,5 +1,3 @@
-# NestJS
-
 Nest (NestJS) is a framework for building efficient, scalable **[Node.js](https://nodejs.org/)** server-side applications. It uses progressive JavaScript, is built with and fully supports **[TypeScript](http://www.typescriptlang.org/)** (yet still enables developers to code in pure JavaScript) and combines elements of OOP (Object Oriented Programming), FP (Functional Programming), and FRP (Functional Reactive Programming).
 
 Under the hood, Nest makes use of robust HTTP Server frameworks like **[Express](https://expressjs.com/)** (the default) and optionally can be configured to use **[Fastify](https://github.com/fastify/fastify)** as well!
@@ -318,3 +316,274 @@ app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 ```
 
 It will make the body object the instanse of the Dto class.
+
+### TypeOrm + PostgreSQL integration
+
+installation:
+
+```bash
+yarn add @nestjs/typeorm typeorm pg
+```
+
+Add TypeOrmModule to imports in app module:
+
+```tsx
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { CoffeesModule } from "./coffees/coffees.module";
+
+@Module({
+  imports: [
+    CoffeesModule,
+    TypeOrmModule.forRoot({
+      type: "postgres",
+      host: "localhost",
+      port: 5432,
+      username: "postgres",
+      password: "pass123",
+      database: "postgres",
+      autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
+      synchronize: true, // your entities will be synced with the database (ORM will map entity definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
+    }),
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+```
+
+**Creating entity:**
+
+```tsx
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+
+// @Entity('coffees') sql table === 'coffees'
+@Entity() // sql table === 'coffee'
+export class Coffee {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  name: string;
+
+  @Column()
+  brand: string;
+
+  @Column("json", { nullable: true })
+  flavors: string[];
+}
+```
+
+Add entity to the module it's used in
+
+```tsx
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+
+import { CoffeesService } from "./coffees.service";
+import { CoffeesController } from "./coffees.controller";
+import { Coffee } from "./entities/coffee.entity";
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Coffee])],
+  controllers: [CoffeesController],
+  providers: [CoffeesService],
+})
+export class CoffeesModule {}
+```
+
+### Repository
+
+Repository is used to manage a concrete entity (to manage any entity u can use EntityManager)
+
+To work with entity repository u should to inject it first in your service:
+
+```tsx
+export class CoffeesService {
+  constructor(
+    @InjectRepository(Coffee)
+    private readonly coffeeRepository: Repository<Coffee>
+  ) {}
+}
+```
+
+And then call methods on its repository that it provides. Example w/ pagination:
+
+```tsx
+public findAll(paginationQuery: PaginationQueryDto): Promise<Array<Coffee>> {
+    const { limit, offset } = paginationQuery;
+
+    return this.coffeeRepository.find({
+      relations: ['flavors'],
+      skip: offset,
+      take: limit,
+    });
+  }
+```
+
+### Relations
+
+Many to many relation example:
+
+Coffee entity field:
+
+```tsx
+@JoinTable()
+  @ManyToMany(
+    _ => Flavor,
+    flavor => flavor.coffees,
+    {
+      cascade: true, // ['insert']
+    },
+  )
+  flavors: Flavor[];
+```
+
+Flavor entity field:
+
+```tsx
+@ManyToMany(
+    _ => Coffee,
+    coffee => coffee.flavors,
+  )
+  coffees: Array<Coffee>;
+```
+
+Specify relation in param on query:
+
+```tsx
+public async findOne(id: string): Promise<Coffee> {
+    const coffee = await this.coffeeRepository.findOne(id, {
+      relations: ['flavors'], // related to flavors table
+    });
+
+    if (!coffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+
+    return coffee;
+  }
+```
+
+### Transaction
+
+Transactions are created using Connection or EntityManager.
+
+Example w/ `queryRunner`:
+
+First, inject connection:
+
+```tsx
+constructor(
+    @InjectRepository(Coffee)
+    private readonly coffeeRepository: Repository<Coffee>,
+    private readonly connection: Connection,
+  ) {}
+```
+
+Usage of queryRunner:
+
+```tsx
+public async recommendCoffee(coffee: Coffee): Promise<void> {
+    const queryRunner = this.connection.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      coffee.recomendations++;
+
+      const recommendEvent = new Event();
+      recommendEvent.name = 'recommend_coffee';
+      recommendEvent.type = 'coffee';
+      recommendEvent.payload = { coffeId: coffee.id };
+
+      await queryRunner.manager.save(coffee);
+      await queryRunner.manager.save(recommendEvent);
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+```
+
+Event entity:
+
+```tsx
+import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
+
+@Index(["name", "type"])
+@Entity()
+export class Event {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  type: string;
+
+  @Index()
+  @Column()
+  name: string;
+
+  @Column("json")
+  payload: Record<string, any>;
+}
+```
+
+### Migrations
+
+Creating a TypeOrm Migration:
+
+```bash
+npx typeorm migration:create -n CoffeeRefactor
+```
+
+CoffeeRefactor being the NAME we are giving "this" migration
+
+Migration file:
+
+```tsx
+public async up(queryRunner: QueryRunner): Promise<any> {
+  await queryRunner.query(
+    `ALTER TABLE "coffee" RENAME COLUMN "name" TO "title"`,
+  );
+}
+
+public async down(queryRunner: QueryRunner): Promise<any> {
+  await queryRunner.query(
+    `ALTER TABLE "coffee" RENAME COLUMN "title" TO "name"`,
+  );
+}
+```
+
+Running migration:
+
+1. Compile project first:
+
+```bash
+npm run build
+```
+
+2. Run migration
+
+```bash
+npx typeorm migration:run
+```
+
+REVERT migration(s)
+
+```bash
+npx typeorm migration:revert
+```
+
+Or u can generate migration using CLI:
+
+```bash
+npx typeorm migration:generate -n SchemaSync
+```
