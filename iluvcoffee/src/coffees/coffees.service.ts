@@ -1,45 +1,120 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Connection } from 'typeorm';
 
+import { Flavor } from './entities/flavor.entity';
 import { Coffee } from './entities/coffee.entity';
+import { Event } from './events/entities/event.entity';
+import { CreateCoffeeDto } from './dto/create-coffee.dto';
+import { UpdateCoffeeDto } from './dto/update-coffee.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 
 @Injectable()
 export class CoffeesService {
-  private coffees: Array<Coffee> = [
-    {
-      id: 1,
-      name: 'Shipwrech Roast',
-      brand: 'Buddy Brew',
-      flavors: ['chocolate', 'vanilla'],
-    },
-  ];
+  constructor(
+    @InjectRepository(Coffee)
+    private readonly coffeeRepository: Repository<Coffee>,
+    @InjectRepository(Flavor)
+    private readonly flavorRepository: Repository<Flavor>,
+    private readonly connection: Connection,
+  ) {}
 
-  public findAll() {
-    return this.coffees;
+  public findAll(paginationQuery: PaginationQueryDto): Promise<Array<Coffee>> {
+    const { limit, offset } = paginationQuery;
+
+    return this.coffeeRepository.find({
+      relations: ['flavors'],
+      skip: offset,
+      take: limit,
+    });
   }
 
-  public findOne(id: string) {
-    return this.coffees.find(coffee => coffee.id === +id);
+  public async findOne(id: string): Promise<Coffee> {
+    const coffee = await this.coffeeRepository.findOne(id, {
+      relations: ['flavors'],
+    });
+
+    if (!coffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+
+    return coffee;
   }
 
-  public create(createCoffeeDto: any) {
-    this.coffees.push(createCoffeeDto);
+  public async create(createCoffeeDto: CreateCoffeeDto): Promise<Coffee> {
+    const flavors = await Promise.all(
+      createCoffeeDto.flavors.map(name => this.preloadFlavorByName(name)),
+    );
 
-    return createCoffeeDto;
+    const coffee = this.coffeeRepository.create({
+      ...createCoffeeDto,
+      flavors,
+    });
+
+    return this.coffeeRepository.save(coffee);
   }
 
-  public update(id: string, updateCoffeeDto: any) {
-    const existingCoffee = this.findOne(id);
+  public async update(
+    id: string,
+    updateCoffeeDto: UpdateCoffeeDto,
+  ): Promise<Coffee> {
+    const flavors =
+      updateCoffeeDto.flavors &&
+      (await Promise.all(
+        updateCoffeeDto.flavors.map(name => this.preloadFlavorByName(name)),
+      ));
 
-    if (existingCoffee) {
-      //    update the existing coffee
+    const coffee = await this.coffeeRepository.preload({
+      id: +id,
+      ...updateCoffeeDto,
+      flavors,
+    }); // Creates a new entity based on object
+
+    if (!coffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+
+    return this.coffeeRepository.save(coffee);
+  }
+
+  public async remove(id: string): Promise<Coffee> {
+    const coffee = await this.findOne(id);
+
+    return this.coffeeRepository.remove(coffee);
+  }
+
+  public async recommendCoffee(coffee: Coffee): Promise<void> {
+    const queryRunner = this.connection.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      coffee.recomendations++;
+
+      const recommendEvent = new Event();
+      recommendEvent.name = 'recommend_coffee';
+      recommendEvent.type = 'coffee';
+      recommendEvent.payload = { coffeId: coffee.id };
+
+      await queryRunner.manager.save(coffee);
+      await queryRunner.manager.save(recommendEvent);
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
     }
   }
 
-  public remove(id: string) {
-    const coffeeIndex = this.coffees.findIndex(item => item.id === +id);
+  public async preloadFlavorByName(name: string): Promise<Flavor> {
+    const existingFlavor = await this.flavorRepository.findOne({ name });
 
-    if (coffeeIndex >= 0) {
-      this.coffees.splice(coffeeIndex, 1);
+    if (existingFlavor) {
+      return existingFlavor;
     }
+
+    return this.flavorRepository.create({ name });
   }
 }

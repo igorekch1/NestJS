@@ -5,44 +5,97 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CoffeesService = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const flavor_entity_1 = require("./entities/flavor.entity");
+const coffee_entity_1 = require("./entities/coffee.entity");
+const event_entity_1 = require("./events/entities/event.entity");
 let CoffeesService = class CoffeesService {
-    constructor() {
-        this.coffees = [
-            {
-                id: 1,
-                name: 'Shipwrech Roast',
-                brand: 'Buddy Brew',
-                flavors: ['chocolate', 'vanilla'],
-            },
-        ];
+    constructor(coffeeRepository, flavorRepository, connection) {
+        this.coffeeRepository = coffeeRepository;
+        this.flavorRepository = flavorRepository;
+        this.connection = connection;
     }
-    findAll() {
-        return this.coffees;
+    findAll(paginationQuery) {
+        const { limit, offset } = paginationQuery;
+        return this.coffeeRepository.find({
+            relations: ['flavors'],
+            skip: offset,
+            take: limit,
+        });
     }
-    findOne(id) {
-        return this.coffees.find(coffee => coffee.id === +id);
+    async findOne(id) {
+        const coffee = await this.coffeeRepository.findOne(id, {
+            relations: ['flavors'],
+        });
+        if (!coffee) {
+            throw new common_1.NotFoundException(`Coffee #${id} not found`);
+        }
+        return coffee;
     }
-    create(createCoffeeDto) {
-        this.coffees.push(createCoffeeDto);
-        return createCoffeeDto;
+    async create(createCoffeeDto) {
+        const flavors = await Promise.all(createCoffeeDto.flavors.map(name => this.preloadFlavorByName(name)));
+        const coffee = this.coffeeRepository.create(Object.assign(Object.assign({}, createCoffeeDto), { flavors }));
+        return this.coffeeRepository.save(coffee);
     }
-    update(id, updateCoffeeDto) {
-        const existingCoffee = this.findOne(id);
-        if (existingCoffee) {
+    async update(id, updateCoffeeDto) {
+        const flavors = updateCoffeeDto.flavors &&
+            (await Promise.all(updateCoffeeDto.flavors.map(name => this.preloadFlavorByName(name))));
+        const coffee = await this.coffeeRepository.preload(Object.assign(Object.assign({ id: +id }, updateCoffeeDto), { flavors }));
+        if (!coffee) {
+            throw new common_1.NotFoundException(`Coffee #${id} not found`);
+        }
+        return this.coffeeRepository.save(coffee);
+    }
+    async remove(id) {
+        const coffee = await this.findOne(id);
+        return this.coffeeRepository.remove(coffee);
+    }
+    async recommendCoffee(coffee) {
+        const queryRunner = this.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            coffee.recomendations++;
+            const recommendEvent = new event_entity_1.Event();
+            recommendEvent.name = 'recommend_coffee';
+            recommendEvent.type = 'coffee';
+            recommendEvent.payload = { coffeId: coffee.id };
+            await queryRunner.manager.save(coffee);
+            await queryRunner.manager.save(recommendEvent);
+            await queryRunner.commitTransaction();
+        }
+        catch (err) {
+            await queryRunner.rollbackTransaction();
+        }
+        finally {
+            await queryRunner.release();
         }
     }
-    remove(id) {
-        const coffeeIndex = this.coffees.findIndex(item => item.id === +id);
-        if (coffeeIndex >= 0) {
-            this.coffees.splice(coffeeIndex, 1);
+    async preloadFlavorByName(name) {
+        const existingFlavor = await this.flavorRepository.findOne({ name });
+        if (existingFlavor) {
+            return existingFlavor;
         }
+        return this.flavorRepository.create({ name });
     }
 };
 CoffeesService = __decorate([
-    common_1.Injectable()
+    common_1.Injectable(),
+    __param(0, typeorm_1.InjectRepository(coffee_entity_1.Coffee)),
+    __param(1, typeorm_1.InjectRepository(flavor_entity_1.Flavor)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Connection])
 ], CoffeesService);
 exports.CoffeesService = CoffeesService;
 //# sourceMappingURL=coffees.service.js.map

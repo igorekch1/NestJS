@@ -17,6 +17,7 @@ import { CoffeesService } from './coffees.service';
 import { Coffee } from './entities/coffee.entity';
 import { CreateCoffeeDto } from './dto/create-coffee.dto';
 import { UpdateCoffeeDto } from './dto/update-coffee.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
 
 @Controller('coffees')
 export class CoffeesController {
@@ -28,14 +29,14 @@ export class CoffeesController {
   }
 
   @Get()
-  findAll(@Query() paginationQuery): Array<Coffee> {
-    const { limit, offset } = paginationQuery;
-
-    return this.coffeesService.findAll();
+  findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+  ): Promise<Array<Coffee>> {
+    return this.coffeesService.findAll(paginationQuery);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Coffee | HttpException {
+  findOne(@Param('id') id: string): Promise<Coffee> {
     const coffee = this.coffeesService.findOne(id);
 
     if (!coffee) {
@@ -47,17 +48,20 @@ export class CoffeesController {
   }
 
   @Post()
-  createOne(@Body() createCoffeeDto: CreateCoffeeDto): CreateCoffeeDto {
+  createOne(@Body() createCoffeeDto: CreateCoffeeDto): Promise<Coffee> {
     return this.coffeesService.create(createCoffeeDto);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() body: UpdateCoffeeDto): void {
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdateCoffeeDto,
+  ): Promise<Coffee> {
     return this.coffeesService.update(id, body);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string): void {
+  remove(@Param('id') id: string): Promise<Coffee> {
     return this.coffeesService.remove(id);
   }
 }

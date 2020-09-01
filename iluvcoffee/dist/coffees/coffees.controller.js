@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const coffees_service_1 = require("./coffees.service");
 const create_coffee_dto_1 = require("./dto/create-coffee.dto");
 const update_coffee_dto_1 = require("./dto/update-coffee.dto");
+const pagination_query_dto_1 = require("./dto/pagination-query.dto");
 let CoffeesController = class CoffeesController {
     constructor(coffeesService) {
         this.coffeesService = coffeesService;
@@ -25,8 +26,7 @@ let CoffeesController = class CoffeesController {
         return 'This action returns all coffee falvors';
     }
     findAll(paginationQuery) {
-        const { limit, offset } = paginationQuery;
-        return this.coffeesService.findAll();
+        return this.coffeesService.findAll(paginationQuery);
     }
     findOne(id) {
         const coffee = this.coffeesService.findOne(id);
@@ -55,36 +55,37 @@ __decorate([
     common_1.Get(),
     __param(0, common_1.Query()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Array)
+    __metadata("design:paramtypes", [pagination_query_dto_1.PaginationQueryDto]),
+    __metadata("design:returntype", Promise)
 ], CoffeesController.prototype, "findAll", null);
 __decorate([
     common_1.Get(':id'),
     __param(0, common_1.Param('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Object)
+    __metadata("design:returntype", Promise)
 ], CoffeesController.prototype, "findOne", null);
 __decorate([
     common_1.Post(),
     __param(0, common_1.Body()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_coffee_dto_1.CreateCoffeeDto]),
-    __metadata("design:returntype", create_coffee_dto_1.CreateCoffeeDto)
+    __metadata("design:returntype", Promise)
 ], CoffeesController.prototype, "createOne", null);
 __decorate([
     common_1.Patch(':id'),
-    __param(0, common_1.Param('id')), __param(1, common_1.Body()),
+    __param(0, common_1.Param('id')),
+    __param(1, common_1.Body()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, update_coffee_dto_1.UpdateCoffeeDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], CoffeesController.prototype, "update", null);
 __decorate([
     common_1.Delete(':id'),
     __param(0, common_1.Param('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], CoffeesController.prototype, "remove", null);
 CoffeesController = __decorate([
     common_1.Controller('coffees'),
