@@ -587,3 +587,102 @@ Or u can generate migration using CLI:
 ```bash
 npx typeorm migration:generate -n SchemaSync
 ```
+
+### Dependency Injection
+
+3 key steps in the dependency injection process:
+
+- @Injectable class decorator that can be managed by the nest container. This decorator marks a class as a provider.
+- Request class in the constructor where it's used in order to utilize it
+- This class also should be a provider
+
+When Nest initiate a controller it looks if any dependencies are needed. It looks for dependency class and performs a look on service token which indicates the class. Then will initiate a singleton class, cache it and return it.
+
+Provider:
+
+```tsx
+providers: [CoffeesService] ==> providers: [{provide: CoffeesService, useClass: CoffeesService}]
+```
+
+Associating a token(provide) with a class CoffeesService(useClass)
+
+### Module Encapsulation
+
+CLI:
+
+```bash
+nest g mo <name>
+```
+
+All modules encapsulates all providers in the modules. So, in order to use a provider from another module you need to export it (add to exports property) from this module and also add this module to the imports property of the module where it's provider is used.
+
+### Providers
+
+Many of the basic Nest classes may be treated as a provider – services, repositories, factories, helpers, and so on. The main idea of a provider is that it can inject dependencies; this means objects can create various relationships with each other, and the function of "wiring up" instances of objects can largely be delegated to the Nest runtime system. A provider is simply a class annotated with an @Injectable() decorator.
+
+**Value based Providers** can be used in a testing purpose (useValue):
+
+```tsx
+class MockCoffeeService {}
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Coffee, Flavor, Event])],
+  controllers: [CoffeesController],
+  providers: [{ provide: CoffeesService, useValue: new MockCoffeeService() }],
+})
+export class CoffeesModule {}
+```
+
+**Non-class based Provider Tokens.**
+
+Provide a token and any value:
+
+```tsx
+@Module({
+  imports: [TypeOrmModule.forFeature([Coffee, Flavor, Event])],
+  controllers: [CoffeesController],
+  providers: [
+    CoffeesService,
+    { provide: COFFEE_BRANDS, useValue: ["buddy brew", "nescafe"] },
+  ],
+})
+export class CoffeesModule {}
+```
+
+COFFEE_BRANDS is a string constant.
+
+To use it somewhere u should inject this provider:
+
+```tsx
+@Injectable()
+export class CoffeesService {
+  constructor(
+    @Inject(COFFEE_BRANDS) coffeeBrands: string[],
+  ) {}
+```
+
+**Class Provider**
+
+Could be useful for configs, etc. useClass syntax:
+
+```tsx
+class ConfigService {}
+class DevelopmentConfigService {}
+class ProductionConfigService {}
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Coffee, Flavor, Event])],
+  controllers: [CoffeesController],
+  providers: [
+    CoffeesService,
+    {
+      provide: ConfigService,
+      useClass:
+        process.env.NODE_ENV === "develeopment"
+          ? DevelopmentConfigService
+          : ProductionConfigService,
+    },
+  ],
+})
+export class CoffeesModule {}
+```

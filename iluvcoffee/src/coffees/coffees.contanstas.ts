@@ -1,0 +1,1 @@
+export const COFFEE_BRANDS = 'COFFEES_BRANDS';
