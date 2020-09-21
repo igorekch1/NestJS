@@ -25,7 +25,7 @@ nest g co
 nest g co --no-spec
 ```
 
-Generates a contoller with a specified name which is located in **_Controller_** decorator.
+Generates a contoller with a specified name which is located in ***Controller*** decorator.
 
 Example:
 
@@ -48,7 +48,7 @@ findAll(): string {
 }
 ```
 
-- **POST** - \*\*\*\*To create a post route specify a route name in `Post` decorator param, pass `Body` decorator to function's param and access the body request:
+- **POST** - ****To create a post route specify a route name in `Post` decorator param, pass `Body` decorator to function's param and access the body request:
 
 ```tsx
 @Post()
@@ -70,7 +70,7 @@ JSON:
 
 ```json
 {
-  "name": "Post request"
+	"name": "Post request"
 }
 ```
 
@@ -166,18 +166,18 @@ constructor(private readonly coffeesService: CoffeesService) {}
 Service example:
 
 ```tsx
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-import { Coffee } from "./entities/coffee.entity";
+import { Coffee } from './entities/coffee.entity';
 
 @Injectable()
 export class CoffeesService {
   private coffees: Array<Coffee> = [
     {
       id: 1,
-      name: "Shipwrech Roast",
-      brand: "Buddy Brew",
-      flavors: ["chocolate", "vanilla"],
+      name: 'Shipwrech Roast',
+      brand: 'Buddy Brew',
+      flavors: ['chocolate', 'vanilla'],
     },
   ];
 
@@ -186,7 +186,7 @@ export class CoffeesService {
   }
 
   public findOne(id: string) {
-    return this.coffees.find((coffee) => coffee.id === +id);
+    return this.coffees.find(coffee => coffee.id === +id);
   }
 
   public create(createCoffeeDto: any) {
@@ -202,7 +202,7 @@ export class CoffeesService {
   }
 
   public remove(id: string) {
-    const coffeeIndex = this.coffees.findIndex((item) => item.id === +id);
+    const coffeeIndex = this.coffees.findIndex(item => item.id === +id);
 
     if (coffeeIndex >= 0) {
       this.coffees.splice(coffeeIndex, 1);
@@ -236,8 +236,8 @@ nest g module <name>
 ```
 
 ```tsx
-import { CoffeesService } from "./coffees.service";
-import { CoffeesController } from "./coffees.controller";
+import { CoffeesService } from './coffees.service';
+import { CoffeesController } from './coffees.controller';
 
 @Module({
   controllers: [CoffeesController],
@@ -248,7 +248,7 @@ export class CoffeesModule {}
 
 ### DTO
 
-DTO(Data transfer object) are well used to craete a type safety to the application. They craete a definition for the shape of the data that comes to the body of the request.
+DTO(Data transfer object) are well used to craete a type safety to the application. They craete a definition for the shape of the data that comes to the body of the request. 
 
 ```tsx
 export class UpdateCoffeeDto {
@@ -263,9 +263,9 @@ export class UpdateCoffeeDto {
 First of all, use set global validation in main.ts file:
 
 ```tsx
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -278,13 +278,13 @@ bootstrap();
 U can pass a `whitelist` property set to true in ValidateionPipe in order to remove all invalid and unwandted properties passed to the body:
 
 ```tsx
-app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+app.useGlobalPipes(new ValidationPipe({ whitelist: true })); 
 ```
 
 The validation can be used with a help of `class-validator` libary:
 
 ```tsx
-import { IsString } from "class-validator";
+import { IsString } from 'class-validator';
 
 export class CreateCoffeeDto {
   @IsString()
@@ -301,8 +301,8 @@ export class CreateCoffeeDto {
 In order not to duplicate the code for update Dto, u can use `@nestjs/mapped-types` package:
 
 ```tsx
-import { PartialType } from "@nestjs/mapped-types";
-import { CreateCoffeeDto } from "./create-coffee.dto";
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateCoffeeDto } from './create-coffee.dto';
 
 export class UpdateCoffeeDto extends PartialType(CreateCoffeeDto) {}
 ```
@@ -328,23 +328,23 @@ yarn add @nestjs/typeorm typeorm pg
 Add TypeOrmModule to imports in app module:
 
 ```tsx
-import { Module } from "@nestjs/common";
-import { TypeOrmModule } from "@nestjs/typeorm";
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
-import { CoffeesModule } from "./coffees/coffees.module";
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { CoffeesModule } from './coffees/coffees.module';
 
 @Module({
   imports: [
     CoffeesModule,
     TypeOrmModule.forRoot({
-      type: "postgres",
-      host: "localhost",
+      type: 'postgres',
+      host: 'localhost',
       port: 5432,
-      username: "postgres",
-      password: "pass123",
-      database: "postgres",
+      username: 'postgres',
+      password: 'pass123',
+      database: 'postgres',
       autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
       synchronize: true, // your entities will be synced with the database (ORM will map entity definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
     }),
@@ -358,7 +358,7 @@ export class AppModule {}
 **Creating entity:**
 
 ```tsx
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 // @Entity('coffees') sql table === 'coffees'
 @Entity() // sql table === 'coffee'
@@ -372,7 +372,7 @@ export class Coffee {
   @Column()
   brand: string;
 
-  @Column("json", { nullable: true })
+  @Column('json', { nullable: true })
   flavors: string[];
 }
 ```
@@ -380,12 +380,12 @@ export class Coffee {
 Add entity to the module it's used in
 
 ```tsx
-import { Module } from "@nestjs/common";
-import { TypeOrmModule } from "@nestjs/typeorm";
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { CoffeesService } from "./coffees.service";
-import { CoffeesController } from "./coffees.controller";
-import { Coffee } from "./entities/coffee.entity";
+import { CoffeesService } from './coffees.service';
+import { CoffeesController } from './coffees.controller';
+import { Coffee } from './entities/coffee.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Coffee])],
@@ -405,7 +405,7 @@ To work with entity repository u should to inject it first in your service:
 export class CoffeesService {
   constructor(
     @InjectRepository(Coffee)
-    private readonly coffeeRepository: Repository<Coffee>
+    private readonly coffeeRepository: Repository<Coffee>,
   ) {}
 }
 ```
@@ -516,9 +516,9 @@ public async recommendCoffee(coffee: Coffee): Promise<void> {
 Event entity:
 
 ```tsx
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
-@Index(["name", "type"])
+@Index(['name', 'type'])
 @Entity()
 export class Event {
   @PrimaryGeneratedColumn()
@@ -531,7 +531,7 @@ export class Event {
   @Column()
   name: string;
 
-  @Column("json")
+  @Column('json')
   payload: Record<string, any>;
 }
 ```
@@ -564,13 +564,13 @@ public async down(queryRunner: QueryRunner): Promise<any> {
 
 Running migration:
 
-1. Compile project first:
+1) Compile project first:
 
 ```bash
 npm run build
 ```
 
-2. Run migration
+2) Run migration
 
 ```bash
 npx typeorm migration:run
@@ -643,7 +643,7 @@ Provide a token and any value:
   controllers: [CoffeesController],
   providers: [
     CoffeesService,
-    { provide: COFFEE_BRANDS, useValue: ["buddy brew", "nescafe"] },
+    { provide: COFFEE_BRANDS, useValue: ['buddy brew', 'nescafe'] },
   ],
 })
 export class CoffeesModule {}
@@ -678,7 +678,7 @@ class ProductionConfigService {}
     {
       provide: ConfigService,
       useClass:
-        process.env.NODE_ENV === "develeopment"
+        process.env.NODE_ENV === 'develeopment'
           ? DevelopmentConfigService
           : ProductionConfigService,
     },
@@ -686,3 +686,251 @@ class ProductionConfigService {}
 })
 export class CoffeesModule {}
 ```
+
+### Dynamic modules
+
+Example:
+
+1. create a static method:
+
+```tsx
+import { Module, DynamicModule } from '@nestjs/common';
+import { createConnection, ConnectionOptions } from 'typeorm';
+
+@Module({})
+export class DatabaseModule {
+  static register(options: ConnectionOptions): DynamicModule {
+    return {
+      module: DatabaseModule,
+      providers: [
+        {
+          provide: 'CONNECTION',
+          useValue: createConnection(options),
+        },
+      ],
+    };
+  }
+}
+```
+
+2. Pass a module invoking a static method:
+
+```tsx
+import { Module } from '@nestjs/common';
+
+import { DatabaseModule } from 'src/database/database.module';
+
+@Module({
+  imports: [
+    DatabaseModule.register({
+      type: 'postgres',
+      host: 'localhost',
+      password: 'password',
+    }),
+  ],
+  providers: [],
+})
+export class CoffeeRatingModule {}
+```
+
+**Control providers scope:**
+
+Each provider is a singleton. To change its scope pass it to the @Injectable decorator:
+
+```tsx
+@Injectable({ scope: Scope.DEFAULT }) // By default
+```
+
+- Scope.TRANSIENT - are not shared across consumers. This consumer will receive a new instance of this provider.
+- Scope.REQUEST - new instance of the provider exclusively for each incoming request. Instance is automatically garbage collected after request stops processing. The request scope provider bubbles up an injection chain, so if controller injects a request scope service then this controller becomes request scoped as well.
+
+**useFactory**:
+
+- Create providers dynamically based on other providers
+- Delay the entire bootstrap process until one or more async tasks have completed.
+
+### Configuration
+
+In order to use `.env` file for application configuration install `@nestjs/config` package and enable it in the app module:
+
+```tsx
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import {ConfigModule} from '@nestjs/config'
+
+import { AppService } from './app.service';
+import { AppController } from './app.controller';
+import { DatabaseModule } from './database/database.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,
+      port: +process.env.DATABASE_PORT,
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
+      synchronize: true, // your entities will be synced with the database (ORM will map entity definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
+    }),
+    DatabaseModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+```
+
+**Validation schema** 
+
+```bash
+yarn add @hapi/joi
+yadn add -D @types/hapi__joi
+```
+
+```tsx
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import {ConfigModule} from '@nestjs/config'
+import * as Joi from '@hapi/joi';
+
+import { AppService } from './app.service';
+import { AppController } from './app.controller';
+import { DatabaseModule } from './database/database.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      validationSchema: Joi.object({
+        DATABASE_HOST: Joi.required(),
+        DATABASE_PORT: Joi.number().default(5432)
+      })
+    }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,
+      port: +process.env.DATABASE_PORT,
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
+      synchronize: true, // your entities will be synced with the database (ORM will map entity definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
+    }),
+    DatabaseModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+```
+
+Custom env file paths:
+
+```tsx
+ConfigModule.forRoot({
+      envFilePath: '.environment',
+      // ignoreEnvFile: true
+}),
+```
+
+**Config service:**
+
+```tsx
+@Injectable()
+export class CoffeesService {
+  constructor(
+    private readonly configService: ConfigService,
+	) {
+    const databaseHost = this.configService.get<string>('DATABASE_HOST');
+  }
+}
+```
+
+**Custom configuration**
+
+app.config.ts
+
+```tsx
+export default () => ({
+    environment: process.env.NODE_ENV || "development",
+    database: {
+        host: process.env.DATABASE_HOST,
+        port: parseInt(process.env.DATABASE_PORT, 10) || 5432
+    }
+})
+```
+
+app.module.ts
+
+```tsx
+ConfigModule.forRoot({
+	load: [appConfig]
+})
+```
+
+service.ts:
+
+```tsx
+constructor(
+    private readonly configService: ConfigService,
+  ) {
+    const databaseHost = this.configService.get<string>('database.host');
+  }
+```
+
+P**artial registration**
+
+[module].config.ts:
+
+```tsx
+import { registerAs } from "@nestjs/config"
+
+export default registerAs('coffees', () => ({
+    foo: 'bar'
+}))
+```
+
+[module].service.ts:
+
+```tsx
+const coffeesConfig = this.configService.get('coffees.foo');
+```
+
+**Namespaced configuration object:**
+
+```tsx
+export class CoffeesService {
+  constructor(
+    @Inject(coffeesConfig.KEY)
+    private readonly coffeesConfiguration: ConfigType<typeof coffeesConfig>
+  ) {
+    console.log(coffeesConfiguration.foo)
+  }
+```
+
+**Async configure dynamic modules:**
+
+```tsx
+imports: [
+    ConfigModule.forRoot({
+      load: [appConfig]
+    }),
+    CoffeesModule,
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres',
+        host: process.env.DATABASE_HOST,
+        port: +process.env.DATABASE_PORT,
+        username: process.env.DATABASE_USER,
+        password: process.env.DATABASE_PASSWORD,
+        database: process.env.DATABASE_NAME,
+        autoLoadEntities: true, // models will be loaded automatically (you don't have to explicitly specify the entities: [] array)
+        synchronize: true, // your entities will be synced with the database (ORM will map entity definitions to corresponding SQL tabled), every time you run the application (recommended: disable in the production)
+      })}),
+    DatabaseModule,
+  ],
+```
+
+Async config will be loaded after every module is registered in the application.
