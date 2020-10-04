@@ -1404,3 +1404,256 @@ describe("[Feature] Coffees - /coffees", () => {
   });
 });
 ```
+
+## MongoDB
+
+docker-compose.yml:
+
+```yaml
+version: "3"
+
+services:
+  db:
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGODB_PASSWORD: nest-course
+```
+
+Install mongoose:
+
+```bash
+yarn add mongoose @nestjs/mongoose
+yarn add -D @types/mongoose
+```
+
+Setup MongooseModule in AppModule:
+
+```tsx
+@Module({
+  imports: [
+    MongooseModule.forRoot('mongodb://localhost:27017/nest-course’),
+  ],
+})
+export class AppModule {}
+```
+
+Creating schema:
+
+coffee.entity.ts:
+
+```tsx
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+
+@Schema()
+export class Coffee extends Document {
+  @Prop()
+  name: string;
+
+  @Prop()
+  brand: string;
+
+  @Prop([String])
+  flavors: string[];
+}
+
+export const CoffeeSchema = SchemaFactory.createForClass(Coffee);
+```
+
+coffees.module.ts:
+
+```tsx
+/* Add Schema to MongooseModule in CoffeesModule */
+MongooseModule.forFeature([
+  {
+    name: Coffee.name,
+    schema: CoffeeSchema,
+  },
+]);
+```
+
+**Our Mongoose Models let us interact with MongoDB - with each Model representing a separate collection.**
+
+**In Mongo, an instance of a model is called a Document - if you’re familiar with SQL databases - it might help to think of Documents as something similar to “Rows”.**
+
+**There is a class from Mongoose called Model that acts as an abstraction over our datasource - exposing a variety of useful methods for interacting with the documents stored in our database.**
+
+```tsx
+/* Utilizing Mongo Coffee Model */
+constructor(
+  @InjectModel(Coffee.name)
+  private coffeeModel: Model<Coffee>,
+) {}
+
+/* CoffeesService - FINAL CODE */
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { CreateCoffeeDto } from './dto/create-coffee.dto';
+import { UpdateCoffeeDto } from './dto/update-coffee.dto';
+import { Coffee } from './entities/coffee.entity';
+
+@Injectable()
+export class CoffeesService {
+  constructor(
+    @InjectModel(Coffee.name) private readonly coffeeModel: Model<Coffee>,
+  ) {}
+
+  findAll() {
+    return this.coffeeModel.find().exec();
+  }
+
+  async findOne(id: string) {
+    const coffee = await this.coffeeModel.findOne({ _id: id }).exec();
+    if (!coffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+    return coffee;
+  }
+
+  create(createCoffeeDto: CreateCoffeeDto) {
+    const coffee = new this.coffeeModel(createCoffeeDto);
+    return coffee.save();
+  }
+
+  async update(id: string, updateCoffeeDto: UpdateCoffeeDto) {
+    const existingCoffee = await this.coffeeModel
+      .findOneAndUpdate({ _id: id }, { $set: updateCoffeeDto }, { new: true })
+      .exec();
+
+    if (!existingCoffee) {
+      throw new NotFoundException(`Coffee #${id} not found`);
+    }
+    return existingCoffee;
+  }
+
+  async remove(id: string) {
+    const coffee = await this.findOne(id);
+    return coffee.remove();
+  }
+}
+```
+
+**Pagination**:
+
+```bash
+nest g class common/dto/pagination-query.dto --no-spec
+```
+
+pagination-query.dto.ts
+
+```tsx
+export class PaginationQueryDto {
+  @IsOptional()
+  @IsPositive()
+  limit: number;
+
+  @IsOptional()
+  @IsPositive()
+  offset: number;
+}
+```
+
+coffees.serive.ts
+
+```tsx
+findAll(paginationQuery: PaginationQueryDto) {
+    const { limit, offset } = paginationQuery;
+    return this.coffeeModel
+      .find()
+      .skip(offset)
+      .limit(limit)
+      .exec();
+  }
+```
+
+**Transactions:**
+
+**Let’s say that a new business requirement comes in for our application - and the product team wants users to have the ability to “recommend” different Coffees, AND whenever that occurs - we need to add a new Event to the database that can be used later for data analytics purposes.**
+
+**So we’re going to need 2 things here:**
+
+**We have to provide a new endpoint that allows users to recommend coffees, and we’re going to need to store the Event after the previous call finishes.**
+
+**In order for this *whole* process to “succeed” - we need BOTH operations to be successful. Otherwise we may have inconsistencies in our database.**
+
+**This is where “transactions” come in.**
+
+**A database “transaction” symbolizes a unit of work performed within a database management system.**
+
+**Transactions are a reliable way to accomplish multiple tasks independent of other transactions.**
+
+```bash
+nest g class events/entities/event.entity --no-spec
+```
+
+event.entity.ts:
+
+```tsx
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import * as mongoose from "mongoose";
+
+@Schema()
+export class Event extends mongoose.Document {
+  // Note "entity" was removed from the class "name"
+  @Prop()
+  type: string;
+
+  @Prop()
+  name: string;
+
+  @Prop(mongoose.SchemaTypes.Mixed)
+  payload: Record<string, any>;
+}
+
+export const EventSchema = SchemaFactory.createForClass(Event);
+```
+
+coffees.service.ts:
+
+```tsx
+async recommendCoffee(coffee: Coffee) {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      coffee.recommendations++;
+
+      const recommendEvent = new this.eventModel({
+        name: 'recommend_coffee',
+        type: 'coffee',
+        payload: { coffeeId: coffee.id },
+      });
+      await recommendEvent.save({ session });
+      await coffee.save({ session });
+
+      await session.commitTransaction();
+    } catch (err) {
+      await session.abortTransaction();
+    } finally {
+      session.endSession();
+    }
+  }
+```
+
+**Indexes**:
+
+```tsx
+// Index on a single property
+@Prop({ index: true })
+
+// Compound index referencing multiple properties
+eventSchema.index({ name: 1, type: -1 })
+
+/**
+ * In this example:
+ * We passed a value of 1 (to name) which specifies that the index
+ * should order these items in an Ascending order.
+ *
+ * We passed type a value of (negative) -1 which specifies that
+ * The index should order these items in Descending order.
+ */
+```
